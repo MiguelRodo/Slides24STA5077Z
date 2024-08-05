@@ -1,0 +1,187 @@
+---
+title: "PCA Tutorial"
+author: "J Nyirenda"
+date: "18 July 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tibble)
+library(dplyr)
+USArrests_raw <- USArrests
+USArrests[["State"]] <- rownames(USArrests)
+USArrests <- as_tibble(USArrests) |>
+  select(State, everything())
+```
+
+# Principal Component Analysis
+
+The goal of principal component analysis is to find the best low-dimensional representation of the variation in a data set with a multitude of variables. We shall use the R package to carry out principal component analysis on the USArrest data.This data set contains statistics, in arrests per 100,000 residents for assault, murder, and rape in each of the 50 US states in 1973. Also given is the percent of the population living in urban areas.
+
+```{r}
+USArrests |>
+  reframe(across(Murder:Rape, summary) |> signif(2)) |>
+  dplyr::mutate(
+    Stat = c(
+      "Minimum", "1st Qu.", "Median", "Mean", 
+      "3rd Qu.", "Max"
+    )
+  ) |>
+  dplyr::select(Stat, everything())
+```
+
+The objective of the analysis is to investigate whether we can capture most of the variation in the data using new fewer variables each of which is a linear combination of the 4 types of crimes.
+
+For PCA to work properly we need to center the data by subtracting the column means from each sample value in the respective columns. This action removes the arbitrary bias from measurements and moves the data to the origin of the coordinate system. We also need to scale the data in order to remove the fact that variables may be measured in different units. The whole process is termed standarsing the data. Note that in R we can accomplish all this by setting cor=TRUE in the R function princomp() used to generate the principal components.
+
+```{r}
+pca.out <- princomp(
+  USArrests_raw,
+  cor = TRUE,
+  scores = TRUE
+)
+pca.out
+```
+
+# Explained variation
+
+Note that the total variance is 4, which is equal to the number of standardised variables and since the variance of each standardised variable is 1, the total variance should be equal to the number of variables.
+
+# How Many Principal Components to Retain
+
+In order to decide how many principal components should be retained, it is common to summarise the results of a principal components analysis by making a scree plot, which we can do in R using the plot() function:
+
+```{r}
+Variance <- (pca.out$sdev)^2
+max_Var <- round(max(Variance), 1)
+Components <- 1:4
+Components <- as.integer(Components)
+plot(
+  Components,Variance,
+  main = "Scree Plot",
+  xlab="Number of Components",
+  ylab="Variance",
+  type="o",
+  col="blue",
+  ylim=c(0,max_Var),
+  axes=FALSE
+)
+axis(1,at=1:4)
+axis(2,at=0:3)
+```
+
+We can also plot the percentage variation explained by each principal component:
+
+```{r}
+Variance <- (pca.out$sdev)^2
+PercVariance <- Variance / sum(Variance) * 1e2
+maxPercVar <- round(max(PercVariance),1)
+Components <- 1:4
+Components <- as.integer(Components)
+plot(
+  Components,
+  PercVariance,
+  main = "Scree Plot",
+  xlab = "Number of Components",
+  ylab = "% Variance",
+  type = "o",
+  col="blue",
+  ylim = c(0, maxPercVar + 5),
+  axes = FALSE
+)
+axis(1, at = 1:4)
+axis(2, at = seq(0, ceiling(maxPercVar) + 5, by = 5))
+```
+
+- Possible criteria:
+  - Sharply curved "elbow" in the plot
+  - Percentage variation explained
+  - Percentage variation explained above average
+    - If we have scaled the variables, the average is 1.
+  - Purpose of the analysis
+    - Graphical: can we get away with just two components?
+    - Prediction: capturing "sufficient" information concisely "enough"
+  
+# Loadings
+
+The loadings for the principal components are stored in pca.out$loadings which contains a matrix with the loadings of each principal component, where the first column in the matrix contains the loadings for the first principal component, the second column contains the loadings for the second principal component, and so on.
+
+```{r}
+pca.out$loadings |> signif(2)
+```
+
+## Interpretation Guidelines
+
+- **Focus on Meaningful Patterns:** Don't overemphasize coefficients that are all positive or negative (unless contextually relevant). Instead, focus on identifying the overall meaning of the new variables (components, factors, etc.) or highlighting the major contributors.
+- **Summarize, Don't Repeat:** Avoid simply listing coefficients from tables. Instead, concisely summarize the key insights in a few sentences. 
+- **Use the Coefficients:** Mention coefficients in parentheses when they strengthen your interpretation. For example: "Component one contrasts O3 (0.62) and NO (0.54) with wind (-0.34)."
+- **Ignore Trivial Coefficients:** Very small coefficients (e.g., 0.001) are usually negligible and can be omitted from your interpretation.
+- **Aim for Clarity and Conciseness:** You don't need to write elaborate or long interpretations. Focus on conveying the most important patterns and relationships clearly and concisely.
+
+# Scores
+
+And we can view the scores of the first 6 observations in the data set by typing
+
+```{r}
+head(pca.out$scores) |> signif(2)
+```
+
+## Manual calculation
+
+We can manually calculate the scores as well. Here are the weights for the first principal component:
+
+```{r}
+loadings_mat <- pca.out$loadings
+loadings_vec_1 <- loadings_mat[, 1]
+loadings_vec_1 |> signif(2)
+```
+
+For the first observation, here are the (scaled) values:
+
+```{r}
+USArrests_scaled <- USArrests |>
+  mutate(
+    across(Murder:Rape, function(x) (x - mean(x)) / sd(x)),
+  )
+obs_vec_1 <- USArrests_scaled[1, 2:5] |> unlist()
+obs_vec_1 |> signif(2)
+```
+
+Now, we can take their dot product:
+
+```{r}
+(loadings_vec_1 %*% obs_vec_1) |> signif(2)
+```
+
+We can also calculate the score for the first observation for the second component:
+
+```{r}
+loadings_vec_2 <- loadings_mat[, 2]
+(loadings_vec_2 %*% obs_vec_1) |> signif(2)
+```
+
+# Biplots
+
+Dimension reduction via PCA is especially useful when the number of principal components is 2 for it allows us to make a 2D scatterplot of the principal component scores. The principal component scores are calculated for each of the observations so that we can assess the spread, similarities and differences between the observations. Another useful plotting technique is the biplot. As the name bi-plot suggest, we plot both the samples and the variables.
+
+```{r}
+biplot(pca.out, scale = 0)
+```
+
+First note that the direction of an arrow is the direction of increase of the corresponding variable. Clearly, all the variables are positively correlated.
+
+However, murder, assault and rape each contributegg a larger component along the first principal component than the second. It can be concluded that the first principal component therefore is a measure of the level of serious crime.
+
+On the other hand, the urban population component dominates the second principal component and thus it can be concluded that the second component is a measure of size of population.
+
+It can be further concluded that the states near the centre have average population size and experience average levels of serious crime relative to the other states. Mississippi has the lowest population while california has the largest population. Clearly, levels of serious crime are highest in mississippi, north and south carolina which incidentally form a cluster. There is less than average rape cases in Montana,South and North Dakota while West Virginia recorded the least rape cases.
+
+## Interpretation guidelines
+
+- What to interpret from a biplot:
+  - Correlation between variables
+  - Spread/clustering of observations
+  - How observations relate to variables
