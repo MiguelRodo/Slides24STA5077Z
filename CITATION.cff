@@ -1,0 +1,34 @@
+# --------------------------------------------
+# CITATION file created with {cffr} R package
+# See also: https://docs.ropensci.org/cffr/
+# --------------------------------------------
+ 
+cff-version: 1.2.0
+message: 'To cite package "Slides24STA5077Z" in publications use:'
+type: software
+title: 'Slides24STA5077Z: Slides for STA5077Z MSc Data Science module on unsupervised
+  learning'
+version: 0.0.0-1
+abstract: Slides for STA5077Z MSc Data Science module on unsupervised learning
+authors:
+- family-names: Rodo
+  given-names: Miguel
+  email: miguel.rodo@uct.ac.za
+preferred-citation:
+  type: generic
+  title: 'Slides24STA5077Z: Slides for STA5077Z MSc Data Science module on unsupervised
+    learning'
+  authors:
+  - family-names: Rodo
+    given-names: Miguel
+    email: miguel.rodo@uct.ac.za
+  url: https://github.com//Slides24STA5077Z/#readme
+  abstract: Slides for STA5077Z MSc Data Science module on unsupervised learning
+  version: 0.0.0-1
+repository-code: https://github.com//Slides24STA5077Z
+url: https://github.com//Slides24STA5077Z/#readme
+contact:
+- family-names: Rodo
+  given-names: Miguel
+  email: miguel.rodo@uct.ac.za
+

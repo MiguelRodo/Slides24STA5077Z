@@ -1,0 +1,11 @@
+build:
+  github:
+    archive:
+      content:
+      - data-raw-img
+      - data-raw-other
+      - docs
+      structure: version
+      send:
+        version-source: none
+        sync-approach: sync-using-deletion

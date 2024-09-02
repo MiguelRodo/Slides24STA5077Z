@@ -1,0 +1,11 @@
+citHeader("To cite `Slides24STA5077Z` in publications use:")
+
+bibentry(bibtype = "Misc",
+         key = "rodo",
+         title = "Slides24STA5077Z: Slides for STA5077Z MSc Data Science module on unsupervised learning",
+         author = person(given = "Miguel",
+                         family = "Rodo",
+                         email = "miguel.rodo@uct.ac.za"),
+         url = "https://github.com//Slides24STA5077Z/#readme",
+         abstract = "Slides for STA5077Z MSc Data Science module on unsupervised learning",
+         version = "0.0.0-1")
