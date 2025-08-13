@@ -1,0 +1,219 @@
+---
+title: "Extension Content: Divisive Clustering"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+---
+
+```{r}
+#| results: hide
+#| message: false
+#| warning: false
+pkg_vec <- c("palmerpenguins", "cluster", "factoextra")
+for (x in pkg_vec) {
+  if (!requireNamespace(x, quietly = TRUE)) {
+    install.packages(x)
+  }
+}
+library(palmerpenguins)
+library(cluster)
+library(factoextra)
+```
+
+# Performance in various scenarios
+
+## Well-separated clusters
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# 1. Well‑separated clusters
+# ---------------------------
+# Generate three well‑separated 2D Gaussian clusters
+n <- 50
+cl1 <- matrix(rnorm(2*n, mean = 0, sd = 0.3), ncol = 2)
+cl2 <- matrix(rnorm(2*n, mean = 3, sd = 0.3), ncol = 2)
+cl3 <- matrix(rnorm(2*n, mean = 6, sd = 0.3), ncol = 2)
+data_well <- rbind(cl1, cl2, cl3)
+```
+
+```{r}
+plot_tbl <- data_well |>
+  tibble::as_tibble() |>
+  dplyr::mutate(cluster = factor(rep(1:3, each = n)))
+ggplot(plot_tbl, aes(x = V1, y = V2, col = cluster)) +
+  geom_point() +
+  labs(title = "Well-separated clusters") +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy")
+```
+
+```{r}
+# Compute distance matrix
+d_well <- dist(data_well)
+
+# Plot dendrograms for average, complete, single linkage
+par(mfrow = c(1,3), mar = c(4,4,2,1))
+plot(hclust(d_well, method = "average"), main = "Well‑sep: Average", ylab = "Height")
+plot(hclust(d_well, method = "complete"), main = "Well‑sep: Complete", ylab = "")
+plot(hclust(d_well, method = "single"),   main = "Well‑sep: Single",   ylab = "")
+```
+
+## Poorly separated clusters
+
+```{r}
+# 2. Poorly separated clusters
+# -----------------------------
+# Generate three overlapping 2D Gaussian clusters
+cl1_p <- matrix(rnorm(2*n, mean = 0, sd = 1), ncol = 2)
+cl2_p <- matrix(rnorm(2*n, mean = 4, sd = 1.5), ncol = 2)
+cl3_p <- matrix(rnorm(2*n, mean = 7, sd = 1.5), ncol = 2)
+data_poor <- rbind(cl1_p, cl2_p, cl3_p)
+```
+
+```{r}
+plot_tbl_poor <- data_poor |>
+  tibble::as_tibble() |>
+  dplyr::mutate(cluster = factor(rep(1:3, each = n)))
+ggplot(plot_tbl_poor, aes(x = V1, y = V2, col = cluster)) +
+  geom_point() +
+  labs(title = "Poorly-separated clusters") +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy")
+```
+
+```{r}
+
+d_poor <- dist(data_poor)
+
+par(mfrow = c(1,3))
+plot(hclust(d_poor, method = "average"), main = "Poor‑sep: Average", ylab = "Height")
+plot(hclust(d_poor, method = "complete"), main = "Poor‑sep: Complete", ylab = "")
+plot(hclust(d_poor, method = "single"),   main = "Poor‑sep: Single",   ylab = "")
+```
+
+## L-shaped cluster
+
+```{r}
+# 3. One “L”‑shaped cluster + one well‑sep cluster
+# -------------------------------------------------
+# Generate L‑shape: two arms along axes
+arm1 <- cbind(seq(0, 5, length.out = n), rep(0, n))
+arm2 <- cbind(rep(0, n), seq(0, 5, length.out = n))
+L_cluster <- rbind(arm1, arm2) + matrix(rnorm(4*n, sd = 0.1), ncol = 2)
+
+# Well‑sep cluster
+cl_sep <- matrix(rnorm(2*n, mean = 2.5, sd = 0.3), ncol = 2)
+
+data_L <- rbind(L_cluster, cl_sep)
+```
+
+```{r}
+plot_tbl_L <- data_L |>
+  tibble::as_tibble() |>
+  dplyr::mutate(cluster = factor(c(rep(1, length(arm1) ), rep(2, n))))
+ggplot(plot_tbl_L, aes(x = V1, y = V2, col = cluster)) +
+  geom_point() +
+  labs(title = "L-shaped cluster + well-separated cluster") +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy")
+```
+
+```{r}
+d_L   <- dist(data_L)
+
+par(mfrow = c(1,2))
+plot(hclust(d_L, method = "average"), main = "L + sep: Average", ylab = "Height")
+plot(hclust(d_L, method = "single"),  main = "L + sep: Single",  ylab = "")
+
+# Reset plotting layout
+par(mfrow = c(1,1))
+```
+
+# Divisive Clustering
+
+Divisive clustering is a **top‑down** hierarchical approach in which you start with all observations in one cluster and recursively split until each cluster is sufficiently homogeneous. A simple algorithmic sketch is:
+
+1. **Identify the “widest” cluster**  
+   - Compute, for each current cluster, a measure of its spread (e.g. average pairwise dissimilarity or maximum dissimilarity).  
+   - Select the cluster with the largest spread.
+
+2. **Find the most “extreme” point**  
+   - Within that cluster, choose the observation whose **average** dissimilarity to all other members is largest.
+
+3. **Form a new subcluster**  
+   - Remove that extreme point into its own cluster.  
+   - Assign to it any point in the original cluster whose average dissimilarity to the extreme point is now **smaller** than its average dissimilarity to the remainder of its original cluster.
+
+4. **Repeat**  
+   - Recompute spreads for all clusters and go back to step 1 until no further splits occur (or until you reach a desired number of clusters).
+
+> - Unlike agglomerative methods, divisive clustering allows you to focus splits where they matter most (the clusters with greatest internal heterogeneity).  
+> - The “stop” criterion can be based on a minimum cluster size, a threshold for maximum within‑cluster dissimilarity, or simply running until a fixed number of clusters is obtained.
+
+```{r}
+
+# 1. Load and clean the penguins dataset
+data("penguins", package = "palmerpenguins")
+penguins_clean <- penguins |>
+  dplyr::select(bill_length_mm,
+                bill_depth_mm,
+                flipper_length_mm,
+                body_mass_g,
+                species) |>
+  na.omit()
+
+penguins_mat <- as.matrix(penguins_clean[, -5])  # Exclude species column for clustering
+
+# 2. Compute a (standardised) distance matrix
+#    We standardise to put all measurements on comparable scales
+dist_mat <- dist(scale(penguins_mat), method = "euclidean")
+
+# 3. Perform divisive (DIANA) clustering
+diana_res <- diana(dist_mat, diss = TRUE)
+
+# 4. Plot the divisive dendrogram
+plot(diana_res, 
+     main = "DIANA Divisive Clustering on Palmer Penguins",
+     ylab = "Height (dissimilarity)")
+
+# 5. Cut the tree into k clusters (e.g. k = 3)
+k <- 3
+penguin_clusters <- cutree(as.hclust(diana_res), k = k)
+
+# 6. Visualise the cluster partition in PC space
+fviz_cluster(list(data = penguins_mat, cluster = penguin_clusters),
+             geom = "point",
+             ellipse.type = "convex",
+             show.clust.cent = TRUE) +
+  ggtitle(glue::glue("Penguins clustered by DIANA (k = {k})"))
+```
+
+```{r}
+#| results: asis
+# 7. Inspect cluster assignments
+table(penguins_clean$species, penguin_clusters) |>
+  knitr::kable()
+```
+
+# Ordering of samples
+
+The dendrogram orders samples along the "x-axis" based on their hierarchical clustering structure.
+It is worth briefly noting that one such method is to begin at the top and place the child node on the left that has the lower merge height.
+I think this is what `R` uses in `plot(hist(...))` (`S` used it before and it looks like it), but I can't find it confirmed in help files.
+
+```{r}
+# Example of ordering samples in a dendrogram
+hc <- hclust(dist(penguins_mat), method = "ward.D2")
+plot(hc, main = "Hierarchical Clustering Dendrogram",
+      xlab = "Samples (ordered by merge height)",
+      ylab = "Height (dissimilarity)")
+```
+
+# CITRUS
+
+# Aghaeepour (2013)

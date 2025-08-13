@@ -1,28 +1,20 @@
 directories:
-  data-raw-img:
-    path: _data_raw/img
-  data-raw-other:
-    path: _data_raw/other
+  raw-data-img:
+    path: _raw_data/img
+  raw-data-other:
+    path: _raw_data/other
   cache:
     path: _tmp
   output:
     path: _output
   docs:
     path: docs
-NA: ~
 build:
   git: yes
   github:
-    raw-data:
+    archive-2025:
       content:
-      - data-raw-img
-      - data-raw-other
-      structure: latest
-      send:
-        sync-approach: sync-using-version
-    slides:
-      content: docs
-      structure: latest
-      send:
-        sync-approach: sync-using-version
+      - raw-data-img
+      - raw-data-other
+      - docs
 

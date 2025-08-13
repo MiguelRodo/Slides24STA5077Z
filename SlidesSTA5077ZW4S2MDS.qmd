@@ -27,7 +27,7 @@ format:
 #| results: asis
 #| fig-align: center
 knitr::include_graphics(
-  projr::projr_path_get("data-raw-img", "airline_distance.png")
+  projr::projr_path_get("raw-data-img", "airline_distance.png")
 )
 ```
 
@@ -45,7 +45,7 @@ library(ggrepel)
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{_data_raw/img/airline_mds.png}
+\includegraphics[width=0.6\textwidth]{_raw_data/img/airline_mds.png}
 \end{figure}
 
 # What is MDS?
@@ -137,7 +137,7 @@ library(ggrepel)
 #| results: asis
 #| fig-align: center
 knitr::include_graphics(
-  projr::projr_path_get("data-raw-img", "city_distance.png")
+  projr::projr_path_get("raw-data-img", "city_distance.png")
 )
 ```
 
@@ -418,7 +418,7 @@ kinshipscales[1:4, ]
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{_data_raw/img/morse_code_dots.png}
+\includegraphics[width=0.6\textwidth]{_raw_data/img/morse_code_dots.png}
 \end{figure}
 
 # Morse code example II
@@ -538,7 +538,7 @@ mds_obj[["conf"]][1:5, ]
 
 \begin{figure}[H]
 \center
-\includegraphics[width=0.5\textwidth]{_data_raw/img/morse_code_mds.png}
+\includegraphics[width=0.5\textwidth]{_raw_data/img/morse_code_mds.png}
 \end{figure}
 
 # Randomness in results

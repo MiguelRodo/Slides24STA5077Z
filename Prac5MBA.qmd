@@ -1,0 +1,130 @@
+---
+title: "Prac: Apriori Market Basket Analysis"
+subtitle: "Applying the Apriori Algorithm in R"
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+toc: true
+toc-depth: 2
+---
+
+## Overview
+
+In this practical you will use the Apriori algorithm (from the **arules** package) to mine association rules from a transaction dataset. You will:
+
+- Load or simulate a transaction dataset.
+- Explore the dataset and compute item frequencies.
+- Run the Apriori algorithm with specified minimum support and confidence.
+- Inspect and sort the generated rules by support, confidence, and lift.
+- Visualise the top rules and interpret their meaning.
+
+## 1. Setup
+
+Install and load the required packages:
+
+```{r}
+# Install if necessary
+if (!requireNamespace("arules", quietly = TRUE)) {
+  install.packages("arules")
+}
+if (!requireNamespace("arulesViz", quietly = TRUE)) {
+  install.packages("arulesViz")
+}
+
+library(arules)
+library(arulesViz)
+````
+
+## 2. Load the Data
+
+Use the built-in `Groceries` dataset, or load your own transactions:
+
+```r
+data("Groceries")                # from arules
+summary(Groceries)
+itemFrequencyPlot(Groceries, topN = 20, type = "absolute",
+                  main = "Top 20 Items by Frequency")
+```
+
+> **Discussion:** What are the top 5 most frequent items? Why might these appear so often?
+
+## 3. Run Apriori
+
+Generate rules with minimum support of 0.01 (1%) and minimum confidence of 0.5 (50%):
+
+```r
+rules <- apriori(Groceries,
+                 parameter = list(supp = 0.01, conf = 0.5, target = "rules"))
+length(rules)                    # how many rules?
+```
+
+## 4. Inspect and Sort Rules
+
+Show the first 10 rules sorted by:
+
+* **Support**
+
+  ```r
+  inspect(head(sort(rules, by = "support"), 10))
+  ```
+
+* **Confidence**
+
+  ```r
+  inspect(head(sort(rules, by = "confidence"), 10))
+  ```
+
+* **Lift**
+
+  ```r
+  inspect(head(sort(rules, by = "lift"), 10))
+  ```
+
+> **Exercise:** How do the top rules differ when sorted by support vs lift?
+
+## 5. Subset Rules of Interest
+
+Suppose you are interested in rules that predict `whole milk`. Subset and sort by lift:
+
+```r
+milk_rules <- subset(rules, subset = rhs %pin% "whole milk")
+inspect(head(sort(milk_rules, by = "lift"), 10))
+```
+
+> **Question:** Which antecedent itemsets most strongly predict purchase of whole milk?
+
+## 6. Visualisation
+
+Plot the top 20 rules by lift:
+
+```r
+plot(head(sort(rules, by = "lift"), 20),
+     method = "graph", engine = "htmlwidget")
+```
+
+> **Interpretation:** What clusters or patterns do you see in the network graph?
+
+## 7. Varying Parameters
+
+Repeat the analysis with:
+
+1. **Higher support** (e.g. 0.02), same confidence.
+2. **Lower confidence** (e.g. 0.3), same support.
+
+```r
+rules2 <- apriori(Groceries, parameter = list(supp = 0.02, conf = 0.5))
+rules3 <- apriori(Groceries, parameter = list(supp = 0.01, conf = 0.3))
+length(rules2); length(rules3)
+```
+
+> **Discussion:** How do the number and quality of rules change when you adjust support and confidence?
+
+## 8. Report
+
+Write a short summary (200–300 words) discussing:
+
+* How you chose your parameter values.
+* The most interesting rules you found.
+* Business implications (e.g. store layout, promotions).
+

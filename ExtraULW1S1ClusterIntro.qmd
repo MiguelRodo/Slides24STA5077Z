@@ -1,0 +1,401 @@
+---
+title: "Extension Content: Preprocessing data and additional proximity measures"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+---
+
+```{r}
+#| include: false
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(igraph)
+library(FNN)
+library(MASS)
+```
+
+# Standardising numeric data
+
+Before calculating distance measures, it is often important to standardise numeric variables because:
+
+- they may have different scales, e.g. one variable has a range of 0–100 while another has a range of 0–1000, or
+- they may be measured in different units, e.g. height in cm and weight in kg, or
+
+For example, suppose we have two variables measured in different units and so have very different scales:
+
+| Observation | Income (Rs) | Weight (kg) |
+| ----------- | ----------- | ----------- |
+| A           | 170 000     | 65          |
+| B           | 175 000     | 120         |
+| C           | 160 000     | 60          |
+
+```{r}
+data_mat <- tibble::tibble(
+  income = c(170000, 175000, 160000),
+  weight = c(65, 120, 60)
+) |>
+  as.matrix()
+rownames(data_mat) <- c("A", "B", "C")
+```
+
+Clearly, weight has little impact on the distance between observations:
+
+```{r}
+dist(data_mat, method = "euclidean")
+```
+
+So, we'll typically want to standardise these variables before calculating distances.
+
+We'll discuss various options for standardising numeric variables, including:
+
+- z-score standardisation
+- range normalisation
+- percentile transformation
+- robust standardisation
+
+## Option 1: Z-score Standardisation
+
+For a numeric variable $X$ with observations $x_1, x_2, \dots, x_n$:
+
+1. Compute the **sample mean**:
+
+   $$
+     \bar{x} = \frac{1}{n}\sum_{i=1}^n x_i.
+   $$
+2. Compute the **sample standard deviation**:
+
+   $$
+     s = \sqrt{\frac{1}{n-1}\sum_{i=1}^n (x_i - \bar{x})^2}.
+   $$
+3. Transform each observation to its **z‑score**:
+
+   $$
+     z_i = \frac{x_i - \bar{x}}{s}.
+   $$
+
+After this transformation, each standardised variable has mean 0 and variance 1.
+Distances based on these z‑scores are often referred to as **standardised Euclidean** distances.
+
+```{r}
+data_mat |>
+  scale() 
+```
+
+```{r}
+data_mat |>
+  scale() |>
+  dist(method = "euclidean") |>
+  signif(3)
+```
+
+## Option 2: Range Normalisation
+
+Range normalisation rescales each variable to a \[0,1\] range, which is useful when variables have different scales or units.
+
+For observation $i$ in variable $X$ with values $x_1,\dots,x_n$:
+
+1. Compute the **minimum** and **maximum**:
+
+   $$
+     \min(X) = \min(x_1, \dots, x_n), \quad \max(X) = \max(x_1, \dots, x_n).
+   $$
+
+2. Transform each observation to its **normalised value**:
+    $$
+      x_i' = \frac{x_i - \min(X)}{\max(X) - \min(X)}.
+    $$
+
+This transformation ensures:
+
+- the minimum value becomes 0 and the maximum becomes 1.
+  - This can be important when some variables are non-numeric, as the variables all have the same range, making them comparable.
+- the impact of extreme outliers is reduced, as they are compressed into the \[0,1\] range.
+  - However, extreme outliers can still distort distances if they "squash" all other observations for that variable close together.
+- This is the approach taken by Gower's dissimilarity measure for numeric variables.
+
+```{r}
+data_mat_scale <- data_mat |>
+  apply(2, function(x) (x - min(x)) / (max(x) - min(x)))
+data_mat_scale |>
+  signif(2)
+```
+
+```{r}
+data_mat_scale |>
+  dist(method = "euclidean") |>
+  signif(3)
+```
+
+## Option 3: Percentile Transformation
+
+Converting values to percentile ranks redistributes data onto a uniform \[0,1] scale based on their empirical cumulative distribution function.
+For observation $i$ in variable $X$ with values $x_1,\dots,x_n$:
+
+1. Compute the **rank** of $x_i$ (e.g.\ average rank for ties):
+
+   $$
+     r_i = \#\{j : x_j \le x_i\}.
+   $$
+2. Convert to **percentile**:
+
+   $$
+     p_i = \frac{r_i - 1}{n - 1},
+   $$
+
+   so that the minimum becomes 0 and the maximum 1.
+
+This approach:
+
+* **Reduces impact of extreme outliers** by compressing the tails.
+* **Ensures a uniform distribution** on \[0,1], making subsequent distances less influenced by skew.
+
+However, the loss of shape information means it may not capture relative distances as well as z-scores or even range normalisation.
+
+This is the same as the rank approach for ordinal variables, but applied to numeric data.
+
+```{r}
+data_mat_scaled <- apply(data_mat, 2, function(x) {
+  rank(x, ties.method = "average") / length(x)
+})
+data_mat_scaled |>
+  signif(2)
+```
+
+```{r}
+data_mat_scaled |>
+  dist(method = "euclidean") |>
+  signif(3)
+```
+
+### Option 4: Log transformation
+
+Sometimes a simple monotonic transform can stabilise variance and reduce skew before standardisation.
+
+For strictly positive $x_i$, the log transform is:
+
+$$
+  y_i = \log(x_i)
+$$
+
+* **Effect:** compresses large values, spreads small values.
+* **When to use:** data with multiplicative effects or heavy right skew (e.g. incomes, biological measures).
+
+```{r}
+x <- c(1, 10, 100, 1000)
+y_log <- log10(x)
+y_log
+```
+
+#### Extra options
+
+##### Box–Cox transformation
+
+The Box–Cox family generalises logs with a parameter $\lambda$:
+
+$$
+  y_i^{(\lambda)} = \begin{cases}
+    \frac{x_i^{\lambda} - 1}{\lambda}, & \lambda \neq 0, \\
+    \log(x_i), & \lambda = 0.
+  \end{cases}
+$$
+
+* **Effect:** for $\lambda>0$, similar to power transforms; as $\lambda\to0$, approaches log.
+* **Choosing $\lambda$:** often by maximum-likelihood or cross-validation to best approximate normality.
+
+```{r}
+# Estimate lambda for x
+bc <- boxcox(lm(x ~ 1), plotit = FALSE)
+lambda_hat <- bc$x[which.max(bc$y)]
+lambda_hat
+```
+
+##### `asinh` transformation
+
+One can use the inverse `asinh` transformation for data that includes zero or negative values:
+
+```{r}
+x <- c(-100, -10, 0, 1, 10, 100)
+y_asinh <- asinh(x)
+y_asinh
+```
+
+# Distance measures
+
+## Choice of $p$ for Minkowski distance
+
+The Minkowski distance is defined as:
+
+$$
+  d_p(x, y) = \left( \sum_{i=1}^n |x_i - y_i|^p \right)^{1/p}
+$$
+
+Special cases include:
+
+- $p=1$: **Manhattan distance** (or city block distance)
+- $p=2$: **Euclidean distance**
+- $p=\infty$: **Chebyshev distance** (maximum absolute difference)
+
+Plotted on a 2D plane, these distances form different shapes:
+
+```{r}
+
+
+# 1. Define norms to plot
+ps <- c(1, 2, Inf)
+
+# 2. Build a dense grid of (x,y) in [-1,1]^2
+grid <- expand.grid(
+  x = seq(-1, 1, length.out = 400),
+  y = seq(-1, 1, length.out = 400)
+) %>% as_tibble()
+
+# 3. For each p, compute d_p and keep points with |d_p - 1| small
+plot_tbl <- map_df(ps, function(pval) {
+  grid %>%
+    mutate(
+      dist = if (is.infinite(pval)) {
+        pmax(abs(x), abs(y))
+      } else {
+        (abs(x)^pval + abs(y)^pval)^(1/pval)
+      }
+    ) %>%
+    filter(abs(dist - 1) < 0.003) %>%      # tolerance band
+    mutate(
+      norm = factor(
+        paste0("p = ", ifelse(is.infinite(pval), "∞", pval)),
+        levels = c("p = 1", "p = 2", "p = ∞")
+      )
+    )
+})
+
+# 4. Plot
+p <- ggplot(plot_tbl, aes(x, y)) +
+  geom_point(size = 0.4, alpha = 0.7) +
+  facet_wrap(~ norm, nrow = 1) +
+  coord_equal() +
+  labs(
+    x = expression(x[1]),
+    y = expression(x[2])
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white")
+  )
+path_p  <- "_tmp/fig/unit_circle_norms.png"
+if (!dir.exists("_tmp/fig")) dir.create("_tmp/fig", recursive = TRUE)
+ggsave(path_p, p, width = 8, height = 3.5)
+```
+
+```{r}
+#| results: asis
+#| echo: false
+knitr::include_graphics(path_p)
+```
+
+## Comparing sequences
+
+When observations are **sequences** (e.g. strings), one common metric is:
+
+* **Edit (Levenshtein) distance:** the minimum number of insertions, deletions or substitutions needed to transform one string into another.
+
+```{r}
+library(stringdist)
+# Compute Levenshtein distance
+stringdist("kitten", "sitting", method = "lv")
+```
+
+## Graph‑Based Distances
+
+In high dimensions or on complex manifolds, direct distances may lose contrast.
+Graph‑based approaches restore local structure:
+
+1. **Construct a k‑nearest‑neighbour (kNN) graph**:
+
+   * Each point is a node.
+   * Connect node $i$ to its $k$ closest points by Euclidean distance.
+
+2. **Compute shortest‑path distances** on this graph:
+
+   * Use an algorithm to find minimal cumulative edge weight between nodes.
+
+### 5.1 R Example with `igraph` and `FNN`
+
+```{r}
+# Prepare data
+set.seed(123)
+data(iris)
+X <- as.matrix(iris[, 1:4])
+n <- nrow(X)
+k <- 5
+
+# 1. Find kNN indices (matrix n x k)
+knn_info <- get.knn(X, k = k)
+
+# 2. Build edge list robustly
+edges <- map_dfr(
+  seq_len(n),
+  function(i) {
+    nbrs <- knn_info$nn.index[i, ]
+    # compute Euclidean distances
+    dists <- sqrt(rowSums((X[nbrs, , drop=FALSE] - X[i, ])^2))
+    tibble(
+      from = i,
+      to = nbrs,
+      weight = dists
+    )
+  }
+)
+
+# 3. Create undirected graph
+g <- graph_from_data_frame(edges, directed = FALSE)
+
+# 4. Compute graph-based distances
+dist_matrix <- distances(g, weights = E(g)$weight)
+
+# Inspect a subset
+dist_matrix[1:5, 1:5]
+```
+
+### Plot the kNN Graph
+
+```{r}
+# Restrict to first 50 nodes for clarity
+subg <- induced_subgraph(g, 1:50)
+# Layout in 2D via PCA for plotting
+coords <- prcomp(X[1:50, ])$x[, 1:2]
+V(subg)$x <- coords[,1]
+V(subg)$y <- coords[,2]
+
+plot(
+  subg,
+  layout = as.matrix(coords),
+  vertex.size = 5,
+  vertex.label = NA,
+  edge.color = "grey",
+  main = "kNN Graph (Iris, first 50 observations)"
+)
+```
+
+This visualisation shows each point connected to its five nearest neighbours in the original feature space, highlighting local neighbourhood structure that informs graph‑based distances.
+
+# High-dimenensional data
+
+In high dimensions ($p$ large):
+
+* Distances tend to **concentrate** (most pairs end up similarly far).
+* **Noise and irrelevant features** can dominate meaningful signal.
+
+**Alternative preprocessing:**
+
+* **Principal Component Analysis (PCA):** project onto top $k$ components capturing most variance, reducing $p$ to $k\ll p$, speeding up computations and mitigating noise.
+* **Feature selection** to remove uninformative variables.
+
+
+

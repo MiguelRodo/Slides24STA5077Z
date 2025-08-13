@@ -1,0 +1,256 @@
+---
+title: "Market Basket Analysis: Introduction and the Apriori Algorithm"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+---
+
+# Introduction
+
+Market basket analysis, a subset of association rule mining, aims to identify groups of items (item sets) that frequently occur together in transactional data and use these to predict other items.
+
+* **Basic problem**:
+
+  * Find groups of items predictive of other groups.
+
+    * *Example:* If someone buys vodka, then they’re more likely to buy caviar (though rare).
+    * *Example:* If someone buys nappies, they’re likely to buy infant formula (obvious) or chocolate (surprising and perhaps actionable).
+
+# Nomenclature
+
+Association rules are expressed as implications of the form $A \Rightarrow B$ for $A \cap B = \varnothing$, where:
+
+* **Antecedent**: The first event (item set $A$).
+* **Consequent**: The second event (item set $B$).
+
+For example, in the rule $\{\text{vodka}\} \Rightarrow \{\text{caviar}\}$, $\{\text{vodka}\}$ is the antecedent and $\{\text{caviar}\}$ is the consequent.
+
+Both antecedent and consequent can be single items or sets of items.
+For example, $\{\text{vodka, caviar}\} \Rightarrow \{\text{chocolate}\}$ has a two-item antecedent and a one-item consequent.
+
+# Notation
+
+- $T$:
+  - Set of transactions, each a set of items.
+  - $T = \{t_1, t_2, \ldots, t_n\}$, where $n$ is the number of transactions.
+  - $|T|$ is the number of elements of $T$, which is of course the number of transactions ($n$).
+- $I$:
+  - Collection of distinct items.
+  - $I = \{i_1, i_2, \ldots, i_m\}$, where $m$ is the number of distinct items.
+- $A, B$:
+  - Item sets, which can be single items or combinations of items.
+
+# Key Measures
+
+## Support
+
+* **Count**: $\sigma(A)$ is the number of transactions containing item set A.
+* **Support**: $\text{support}(A) = \dfrac{\sigma(A)}{n}$, where $n$ is the total number of transactions.
+
+For example, if 100 transactions contain vodka, then $\sigma(\{\text{vodka}\}) = 100$ and $\text{support}(\{\text{vodka}\}) = \frac{100}{n}$.
+
+## Confidence
+
+* Measures how often items in B appear in transactions containing A:
+
+$$
+\text{confidence}(A \Rightarrow B) = \frac{\sigma\{A \cup B\}}{\sigma\{A\}}.
+$$
+
+This is an estimate of the conditional probability $\Pr(B \mid A)$, the probability of B given A, where we estimate the joint probability $\Pr(A \cap B)$ as $\sigma\{A \cup B\}/n$ and the marginal probability $\Pr(A)$ as $\sigma\{A\}/n$.
+
+From this, it follows that the confidence is the conditional probability as
+
+$$
+\frac{\Pr(A \cup B)}{\Pr(A)} = \frac{\Pr(B \mid A)\Pr(A)}{\Pr(A)} = \Pr(B \mid A).
+$$
+
+For example, if 100 transactions contain vodka ($\sigma(A)$) and 20 of those also contain caviar ($\sigma(A \cap B)$), then the confidence of the rule $\{\text{vodka}\} \Rightarrow \{\text{caviar}\}$ is $0.2$ or $20\%$.
+
+## Lift
+
+* Measures the increase in probability of B given A, relative to B’s unconditional probability:
+
+$$
+\text{lift}(A \Rightarrow B) = \frac{n\sigma(A \cup B)}{\sigma(A) \sigma(B)}.
+$$
+
+This estimates the ratio of the conditional probability $\Pr(B \mid A)$ to the marginal probability $\Pr(B)$, which is the unconditional probability of B.
+
+$$
+\frac{\Pr(A \cup B)}{\Pr(A)\Pr(B)} = \frac{\Pr(B \mid A)\Pr(A)}{\Pr(B)} = \frac{\Pr(B \mid A)}{\Pr(B)}.
+$$
+
+As the confidence is the conditional probability $\Pr(B \mid A)$, the lift is the ratio of this to the unconditional probability $\Pr(B)$:
+
+$$
+\text{lift}(A \Rightarrow B) =  \frac{\text{confidence}(A \Rightarrow B)}{\Pr(B)}.
+$$
+
+For example, suppose that $n=10^6$, $\sigma(\text{Bread}) = 10^5$, $\sigma(\text{Milk})=10^5$ and $\sigma(\text{Bread} \cup \text{Milk}) = 99900$.
+
+Then the confidence of the rule $\{\text{Bread}\} \Rightarrow \{\text{Milk}\}$ is:
+
+$$
+\text{confidence}(\{\text{Bread}\} \Rightarrow \{\text{Milk}\}) = \frac{\sigma(\{\text{Bread}\} \cup \{\text{Milk}\})}{\sigma(\{\text{Bread}\})} = \frac{99900}{10^5} = 0.999.
+$$
+
+This is a high-confidence rule, suggesting that if a customer buys bread, they are very likely to also buy milk.
+
+However, the lift is:
+
+$$
+\text{lift}(\{\text{Bread}\} \Rightarrow \{\text{Milk}\}) = \frac{n \sigma(\{\text{Bread}\} \cup \{\text{Milk}\})}{\sigma(\{\text{Bread}\}) \sigma(\{\text{Milk}\})} = \frac{10^6 \cdot 99900}{   10^5 \cdot 10^5} = 0.999.
+$$
+
+This indicates that the rule does not significantly increase the likelihood of buying milk given that bread was purchased, as the lift is close to 1.
+
+By contrast, suppose that $\sigma(\text{vodka}) = 1000$, $\sigma(\text{caviar})=100$ and $\sigma(\text{vodka} \cup \text{caviar}) = 50$.
+
+Then the confidence of the rule $\{\text{vodka}\} \Rightarrow \{\text{caviar}\}$ is:
+$$
+\text{confidence}(\{\text{vodka}\} \Rightarrow \{\text{caviar}\}) = \frac{\sigma(\{\text{vodka}\} \cup \{\text{caviar}\})}{\sigma(\{\text{vodka}\})} = \frac{50}{1000} = 0.05.
+$$
+
+But the lift is:
+
+$$
+\text{lift}(\{\text{vodka}\} \Rightarrow \{\text{caviar}\}) = \frac{n \sigma(\{\text{vodka}\} \cup \{\text{caviar}\})}{\sigma(\{\text{vodka}\}) \sigma(\{\text{caviar}\})} = \frac{10^6 \cdot 50}{1000 \cdot 100} = \frac{10^7 \cdot 5}{10^5} = 500.
+$$
+
+Unfortunately, the support of $\{\text{vodke}, \text{caviar}\}$ is only $50/10^6 = 0.005\%$.
+
+# Using the Apriori algorithm (Agrawal, 1995)
+
+Agrawal (1995) introduced the Apriori algorithm, which is a foundational method for market basket analysis and association rule mining.
+It identifies frequent item sets efficiently, which can be used to generate association rules.
+
+Suppose you have $n$ transactions and $m$ distinct items, and you wish to find all rules satisfying:
+
+* Support $> t$,
+* Confidence $> c$.
+
+Agrawal proposed a two-step process:
+
+1. **Frequent Item Set Generation**: Identify all item sets that meet a minimum support threshold.
+2. **Rule Generation**: From the frequent item sets, generate association rules that meet a minimum confidence threshold.
+
+For example, suppose we set $t=0.05$. Then we could identify the frequent item set $\{\text{Bread, Milk}\}$ with support $0.1$ in the first stage.
+From this, we can check if the rules $\text{Bread} \Rightarrow \text{Milk}$ and $\text{Milk} \Rightarrow \text{Bread}$ meet the confidence threshold $c=0.8$.
+
+# Mining Frequent Item Sets
+
+A naive exhaustive search must consider up to $2^m-1$ possible item sets, which is computationally infeasible even for moderate $m$.
+
+## The Apriori Principle
+
+* **Monotonicity**: If an item set is frequent, then all its subsets are also frequent.
+* **Contrapositive**: If any subset of an item set is infrequent, the whole set must be infrequent.
+
+*Example*: If caviar appears in fewer than $t n$ transactions, then the pair {vodka, caviar} cannot meet the threshold either.
+
+## The Apriori Algorithm
+
+Performs a level-wise search for frequent item sets, denoted $L_k$ for size-$k$ sets.
+
+### 1. Initialise ($k=1$)
+
+1. Count support of each single item ${i}$.
+2. Retain those with support $\ge t$ to form $L_1$.
+
+### 2. Iterate ($k \ge 2$)
+
+Repeat until $L_{k-1}$ is empty:
+
+1. **Candidate generation**:
+   * Join pairs in $L_{k-1}$ that share $k-2$ items to form candidate $k$-item sets, which we add to the set $C_k$.
+2. **Prune**: Remove any candidate if any $(k-1)$-subset is not in $L_{k-1}$.
+   * This saves us from counting candidates (next step, which is expensive) that cannot be frequent.
+3. **Count**: Scan the database and count support for survivors in $C_k$.
+4. **Select**: Keep those with support $\ge t$ as $L_k$.
+
+Stop when $L_k$ is empty.
+The union $\bigcup_k L_k$ is the complete set of frequent item sets.
+
+# Computational Efficiency
+
+* Only candidate sets whose all $(k-1)$-subsets are frequent are generated.
+* Database is scanned once per value of $k$ (often small if data are sparse or $t$ is high).
+
+
+# Rule Generation
+
+We now wish to find rules $A \Rightarrow B$ with confidence $\ge c$ from the frequent item sets, where for a given frequent item set $L$, we have:
+
+* $A \cup B = L$,
+* $A \cap B = \varnothing$.
+
+As we start with frequent item sets, we know that the support of any rule $A \Rightarrow B$ is at least $t$, where $t$ is the support threshold.
+
+## Single-item consequents
+
+Suppose we wish to generate rules $A \Rightarrow B$ with confidence $\ge c$ from the frequent item sets, where $|B| = 1$.
+If we have $F_i$ frequent-item sets of size $i$, then we have to consider $\sum_{i=1}^{m-1} iF_i$ frequent item sets of size $i$.
+
+For example, from a three-item frequent item set $K = \{i_1, i_2, i_3\}$, we have the following one-item consequent rules:
+
+- $\{i_2,i_3\} \Rightarrow \{i_1\}$
+- $\{i_1,i_3\} \Rightarrow \{i_2\}$
+- $\{i_1,i_2\} \Rightarrow \{i_3\}$
+
+The confidence for $\{i_2,i_3\} \Rightarrow \{i_1\}$ is computed as:
+
+$$
+\text{confidence}(\{i_2,i_3\} \Rightarrow \{i_1\}) = \frac{\sigma(\{i_1,i_2,i_3\})}{\sigma(\{i_2,i_3\})}.
+$$
+
+In generating the frequent-item sets, we have already computed the support of all item sets, so we can compute the confidence of each rule quickly.
+
+## Multiple-item consequents
+
+For consequents of size greater than 1, we can use a similar principle to the one used for generating candidates: if a rule with a singleton consequent fails the confidence threshold, any rule with a superset consequent will also fail.
+
+For example, if we have a frequent item set $K = \{i_1, i_2, i_3\}$ and we want to generate rules with a two-item consequent, we can partition $K$ into an antecedent $A$ and a consequent $B$ such that $|B|=2$, such as
+
+$$
+\{i_3\} \Rightarrow \{i_1,i_2\}
+$$
+
+It has confidence given by 
+
+$$
+\text{confidence}(\{i_3\} \Rightarrow \{i_1,i_2\}) = \frac{\sigma(\{i_1,i_2,i_3\})}{\sigma(\{i_3\})}.
+$$
+
+We can compare it to the following two rules with $i_3$ as part of the antecedent:
+
+- $\{i_2,i_3\} \Rightarrow \{i_1\}$, with confidence:
+  - $\frac{\sigma(\{i_1,i_2,i_3\})}{\sigma(\{i_2,i_3\})}$.
+- $\{i_1,i_3\} \Rightarrow \{i_2\}$, with confidence:
+  - $\frac{\sigma(\{i_1,i_2,i_3\})}{\sigma(\{i_1,i_3\})}$.
+
+The numerators are identical in all instances, but the denominators differ.
+Specifically, the denominators are higher for the two-item consequent rules than for the single-item consequent rule -> which makes the confidence of the two-item consequent rule lower than that of the single-item consequent rule.
+
+With reference to our example, $\sigma(\{i_1,i_3\}) \leq \sigma(\{i_3\})$ and $\sigma(\{i_2,i_3\}) \leq \sigma(\{i_3\})$, so the confidence of the two-item consequent rule cannot be more than either of the related single-item consequent rules.
+
+As such, if the confidence of either single-consequent rule is below the threshold $c$, then the two-item consequent rule will also be below $c$.
+
+Similar reasoning follows for larger consequents.
+
+Agrawal (1995) propose an algorithm that makes use of the above principle, similar in style to the Aprior algorithm.
+
+# Overall run time
+
+* The running times for the algorithms are bounded by $O(||C||||D||)$, where $||C||$ is the sum of the sizes of candidates and $|D|$ is the number of transactions.
+
+# Summary
+
+* **Step 1**: Mine all frequent item sets via Apriori, where frequent is defined as support $\ge t$.
+* **Step 2**: Generate rules from frequent item sets, retaining those with confidence $\ge c$.
+* **Outcome**: All association rules satisfying support $\ge t$ and confidence $\ge c$.
+
+

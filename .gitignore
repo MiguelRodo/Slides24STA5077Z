@@ -7,12 +7,33 @@ _projr-local.yml
 _environment.local
 
 # Start of projr section: do not edit by hand (until `# End of projr section`)
-_data_raw/**
+_raw_data/img/**
+_raw_data/other/**
 _tmp/**
 _output/**
 docs/**
-_data_raw/img/**
-_data_raw/other/**
+DemCode_files/**
+DemCode.html/**
+ExtraULW1S1ClusterIntro_files/**
+ExtraULW1S1ClusterIntro.html/**
+ExtraULW1S2ClusterHier_files/**
+ExtraULW1S2ClusterHier.html/**
+ExtraULW1S3ClusterPart_files/**
+ExtraULW1S3ClusterPart.html/**
+ExtraULW2S5MBA_files/**
+ExtraULW2S5MBA.html/**
+Prac1Clustering.pdf/**
+Prac1ClusteringSolutions_files/**
+Prac1ClusteringSolutions.html/**
+Prac2ClusteringPrototype_files/**
+Prac2ClusteringPrototype.html/**
+Prac3ClusteringDBSCAN_files/**
+Prac3ClusteringDBSCAN.html/**
+Prac4ClusteringComparison_files/**
+Prac4ClusteringComparison.html/**
+Prac5MBA_files/**
+Prac5MBA.html/**
+SlidesSTA5077ZW4S2MDS.pdf/**
 # End of projr section
 
 SlidesSTA5077ZW4S2MDS_files/**/*

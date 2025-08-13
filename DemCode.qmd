@@ -1,0 +1,45 @@
+---
+title: "Code demonstration for Clustering Methods"
+date: "2025-02-20"
+format:
+  html:
+    self-contained: true
+toc: true
+toc-depth: 2
+---
+
+1. **Simulate data:**
+
+```{r}
+#| eval: false
+# Simulation of seven datasets for DBSCAN parameter exploration
+
+set.seed(123)
+library(MASS)
+library(tibble)
+library(ggplot2)
+library(dbscan)
+
+n <- 200
+
+# 1. High‐separation spherical clusters
+data_dem <- rbind(
+  mvrnorm(n/2, mu = c(0, 0), Sigma = diag(2)),
+  mvrnorm(n/2, mu = c(3, 3), Sigma = diag(2))
+) |>
+  tibble::as_tibble(.name_repair = ~c("x","y"))
+```
+
+2. **Applying hierarchical clustering:**
+
+```{r}
+# can pre-calculate distance matrix
+dist_mat <- dist(
+  data_dem,
+  # choose distance metric
+  method = "manhattan"
+)
+# hierarchical clustering
+hclust_obj <- hclust(dist(data_dem), method = "ward.D2")
+```
+

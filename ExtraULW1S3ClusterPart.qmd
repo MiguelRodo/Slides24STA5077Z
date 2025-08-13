@@ -1,0 +1,101 @@
+---
+title: "Extension Content: Partitioning Clustering"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+---
+
+# Lloyd’s Clustering Algorithm (1957)
+
+Lloyd’s algorithm (also called the $k$-means/​$k$-medoids iterative refinement) proceeds as follows:
+
+1. **Initialisation of prototypes**  
+   – Choose either an initial partition of the $n$ objects into $K$ clusters, $or$ select an initial set of $K$ prototype points (“centroids” or “medoids”)  
+
+2. **Repeat until convergence**  
+   1. **Assign each object to its nearest prototype**  
+      – For each object $x_i$, find the prototype $\mu_j$ (for $j = 1,\ldots, K$) minimizing the distance $d$($x_i$, $\mu_j$)  
+   2. **Recompute each prototype to minimise within-cluster distortion**  
+      – For each cluster $C_j$, choose the new prototype $\mu_j$ that minimises  
+        $$
+          \sum_{x_i \in C_j} d(x_i,\,\mu_j)\,.
+        $$  
+      – Depending on the variant, $\mu_j$ may be:  
+        - An _actual object_ (a **medoid**)
+        - An _artificial point_ (a **centroid**)
+
+3. **Convergence criterion**  
+   – Typically stop when assignments no longer change, or when the total summed distance cannot be further reduced.
+
+
+## Variations on Prototypes and Distances
+
+1. **Prototype type**  
+   - **Medoid**: the cluster member whose total distance to all other members is minimal (used in $k$-medoids, PAM).
+   - **Centroid**: the minimiser of the squared‐distance objective (may not coincide with any data point).
+
+2. **Distance (d)**  
+   - **Any dissimilarity** $d$ can be used ($l_2$, $l_2$, Chebyshev, Gower, cosine, etc.)
+   - **Squared Euclidean** ($l_2^2$) is the default for $k$-means, because it yields a closed-form centroid (the arithmetic mean)  
+
+## $k$-Means as a Special Case
+
+- **Prototype**: _Artificial_ centroid  
+- **Distance**: Squared Euclidean, $d(x,y)=\|x-y\|_2^2$  
+- **Objective function**:
+  $$
+    D \;=\;\sum_{j=1}^K \;\sum_{x_i \in C_j}\;\|x_i - \mu_j\|_2^2
+  $$
+- **Iterative minimisation** (“Lloyd’s steps”):
+  1. **Fix** centroids $\{\mu_j\}$, **assign** each $x_i$ to the nearest $\mu_j$.  
+  2. **Fix** assignments $\{C_j\}$, recompute each centroid as the mean:
+    $$
+      \mu_j \;=\;\frac{1}{|C_j|}\sum_{x_i \in C_j} x_i
+    $$  
+
+     This fact that this is the centroid is found by setting $\partial D/\partial \mu_j = 0$ and solving.
+
+- **Motivation**:  
+  The squared‐distance objective makes the best prototype for cluster $C_j$ the arithmetic mean of its members—no exhaustive search over data points is required, unlike in medoid‐based methods.
+
+## Other Lloyd-Style Algorithms
+
+- **k-Medoids (PAM, CLARA)**  
+  – Prototype = the cluster member (medoid) minimizing total dissimilarity  
+  – Distance = arbitrary dissimilarity measure
+- **k-Medians**
+  – Prototype = component-wise median under $L_1$ (Manhattan) distance  
+  – Robust alternative that avoids computationally-heavy search step for medoids
+- **k-Modes**  
+  – Prototype = the most frequent category vector (mode)  
+  – Designed for purely categorical data  
+
+## Comment on speed of k-means vs k-medoids
+
+### K-means
+
+* **Per‐iteration cost**:
+
+  $$
+    O(K\,n)
+  $$
+* **Why**:
+
+  1. **Assignment step**: for each of the *n* points you compute its distance to each of the *K* centroids -> $O(K n)$.
+  2. **Update step**: recomputing each centroid as the mean of its cluster members is O(n) overall (you just sum each coordinate once).
+
+### K-medoids (PAM)
+
+* **Per‐iteration cost**:
+
+  $$
+    O\bigl(K\,(n - K)^2\bigr)
+  $$
+* **Why**:
+
+  1. **Assignment step** (once, $O(K n)$ as in k-means) - but this is dwarfed by the next bit.
+  2. **Swap evaluation step**: for **each** current medoid (K choices) and **each** non-medoid candidate ($n−K$ choices), you evaluate the change in total dissimilarity by “swapping in” that candidate.  Computing that cost change requires looking at distances from all (n−K) other points -> $K(n−K)(n−K) = O(K (n−K)^2)$.                                                                             
+
