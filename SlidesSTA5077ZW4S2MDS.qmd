@@ -13,6 +13,10 @@ format:
     filecolor: magenta
     include-in-header:
       file: preamble.tex
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 # Key references
@@ -217,7 +221,7 @@ dput(Delta_mat)
 ```
 
 ```{r}
-#| echo: TRUE
+#| echo: FALSE
 Delta_mat <- structure(c(0, 93, 82, 133, 93, 0, 52, 60, 82, 52, 0, 111, 133, 
 60, 111, 0), dim = c(4L, 4L))
 Delta_mat |> signif(2)
@@ -230,7 +234,7 @@ Delta_mat |> signif(2)
 - Calculate $\mathbf{A}$, where $\mathbf{A}_{ij} =-\frac{1}{2}{\delta}_{ij}^2$:
 
 ```{r}
-#| echo: TRUE
+#| echo: FALSE
 # remember, R by default performs
 # element-wise multiplication
 A_mat <- -0.5 * Delta_mat^2
@@ -250,7 +254,7 @@ A_mat |> signif(3)
 - Calculate $\mathbf{B}=\mathbf{HAH}$, where $\mathbf{H} = \mathbf{I} - \frac{1}{n}\mathbf{1}\mathbf{1}^\prime$:
 
 ```{r}
-#| echo: TRUE
+#| echo: FALSE
 H <- diag(4) - 1/4 * matrix(1, 4, 4)
 B_mat <- H %*% A_mat %*% H
 B_mat |> signif(3)
@@ -263,14 +267,14 @@ B_mat |> signif(3)
 - Calculate the eigenvalues and eigenvectors of $\mathbf{B}$:
 
 ```{r}
-#| echo: TRUE
+#| echo: FALSE
 eig_obj <- eigen(B_mat)
 ```
 
 - Calculate the principal coordinates:
 
 ```{r}
-#| echo: TRUE
+#| echo: FALSE
 Y_mat <- eig_obj$vectors %*% diag(sqrt(eig_obj$values))
 Y_mat |> signif(2)
 ```
@@ -289,7 +293,7 @@ Y_mat |> signif(2)
 
 ```{r}
 #| warning: false
-#| echo: true
+#| echo: FALSE
 plot_tbl <- Y_mat |>
  tibble::as_tibble() |>
   dplyr::mutate(
@@ -379,7 +383,7 @@ $$
 - First we load our data, installing the required packages if not available:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 if (!requireNamespace(
   "smacof", quietly = TRUE
   )) {
@@ -403,7 +407,7 @@ data(
   - **Degree**: 1 = first, 2 = second, 3 = third, 4 = fourth.
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 kinshipscales[1:4, ]
 ```
 
@@ -434,7 +438,7 @@ kinshipscales[1:4, ]
 Here is the original dissimilarity matrix:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 data("data_tidy_morse", package = "DataTidy24STA5069Z")
 data_tidy_morse[1:8, 1:8]
 ```
@@ -444,7 +448,7 @@ data_tidy_morse[1:8, 1:8]
 Here is code to plot of the original dissimilarity matrix:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 #| eval: false
 morse_mat <- as.matrix(data_tidy_morse)
 image(
@@ -499,7 +503,7 @@ $$
 - Here is the code to do so:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 row_mat <- matrix(
   rep(diag(morse_mat), each = ncol(morse_mat)), byrow = TRUE, nrow = nrow(morse_mat)
   )
@@ -512,7 +516,7 @@ morse_mat_tilde[1:3, 1:3]
 -  We can apply the `mds` function from the `smacof` package to the Morse code dissimilarities:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 mds_obj <- smacof::mds(
   delta = morse_mat_tilde, # dissimilarities
   ndim = 2, # desired dimension of configuration
@@ -528,7 +532,7 @@ mds_obj <- smacof::mds(
 - Extract the coordinates:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 mds_obj[["conf"]][1:5, ]
 ```
 
@@ -554,7 +558,7 @@ mds_obj[["conf"]][1:5, ]
 
 ```{r}
 #| eval: false
-#| echo: true
+#| echo: FALSE
 MASS::sammon(
   d, y = cmdscale(d, k), k = 2, niter = 1e2,
   trace = TRUE, magic = 0.2, tol = 1e-4)
@@ -563,7 +567,7 @@ MASS::sammon(
 - For example, we can apply it to the SA city distances:
 
 ```{r}
-#| echo: true
+#| echo: FALSE
 #| results: hide
 set.seed(12394)
 data("data_tidy_sa_distance", package = "DataTidy24STA5069Z")
@@ -580,7 +584,7 @@ sammon_obj <- MASS::sammon(data_tidy_sa_distance |> as.matrix())
 
 ```{r}
 #| warning: false
-#| echo: true
+#| echo: FALSE
 plot_tbl <- sammon_obj$points |>
   tibble::as_tibble() |>
   dplyr::mutate(

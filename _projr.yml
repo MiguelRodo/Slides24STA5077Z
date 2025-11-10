@@ -10,6 +10,7 @@ directories:
   docs:
     path: docs
 build:
+  scripts: ExtraULW1S1ClusterIntro.qmd
   git: yes
   github:
     archive-2025:
@@ -17,4 +18,6 @@ build:
       - raw-data-img
       - raw-data-other
       - docs
+dev:
+  scripts: SlidesSTA5077ZW4S2MDS.qmd
 

@@ -6,6 +6,10 @@ format:
     toc-depth: 2
     embed-resources: true
     code-fold: true
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 ```{r}
